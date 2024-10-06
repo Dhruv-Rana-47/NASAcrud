@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System with Orbits</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #backButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px 20px;
+            
+            background-color: rgba(46, 43, 43, 0.514);
+            box-shadow: 0 0px 20px rgba(124, 116, 116, 0.514); /* Blue background */
+            color: #fff; /* White text */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 100;
+            display: none;
+            transition: background-color 0.3s, transform 0.3s; /* Animation on hover */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+        }
+
+        #backButton:hover {
+            background-color: rgba(255, 255, 255, 0.514); /* Darker blue on hover */
+            transform: translateY(-2px); /* Raise button slightly */
+            box-shadow: 0 0px 20px rgba(124, 116, 116, 0.514);
+        }
+
+        #backButton:before {
+            content: '←'; /* Left arrow symbol */
+            margin-right: 8px; /* Space between symbol and text */
+            font-size: 20px; /* Size of the arrow */
+        }
+
+        #infoPanel {
+            position: absolute;
+            top: 180px;
+            left: 30px;
+            height: 300px;
+            width: 300px;
+            background-color: rgba(0, 0, 0, 0.834);
+            color: rgb(216, 216, 216);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            box-shadow: 0 0px 20px rgba(124, 116, 116, 0.514);
+        }
+        #modelName {
+            text-align: center;
+            font-size: 24px; /* Default title size */
+            transition: font-size 0.1s; /* Smooth transition */
+            
+        }
+
+        #infoPanel:hover #modelName {
+            font-size: 25px; /* Increased title size on hover */
+            text-shadow: 0 0px 20px rgb(124, 116, 116);
+        }
+
+        #distanceInfo {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #fff;
+    font-size: 16px;
+    z-index: 100;
+    
+    text-align: right; /* Align text to the right */
+    display: flex; /* Use flexbox for layout */
+    display: none;
+}
+
+        #modelInfo {
+    margin-top: 2px; /* Reduced distance between title and content */
+}
+
+#quizButton {
+            position: absolute;
+            bottom: 10px; /* Positioning at the bottom */
+            right: 10px; /* Positioning at the right */
+            padding: 10px 20px;
+            background-color: rgba(46, 43, 43, 0.514);
+            box-shadow: 0 0px 20px rgba(124, 116, 116, 0.514);
+            color: #fff; /* White text */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 100;
+            transition: background-color 0.3s, transform 0.3s;
+            display: none;
+        }
+
+        #quizButton:hover {
+            background-color: rgba(255, 255, 255, 0.514);
+            transform: translateY(-2px);
+            box-shadow: 0 0px 20px rgba(124, 116, 116, 0.514);
+        }
+
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="distanceInfo">
+    <p id="distanceFromEarth">Distance from Earth: 0 km</p>
+    <p id="distanceFromSun">Distance from Sun: 0 km</p>
+    <p id="orbitalPeriod">Time for one solar orbit: 0 days</p>
+</div>
+<button id="backButton">Back</button>
+<div id="infoPanel">
+    <h3 id="modelName"></h3>
+    <p id="modelInfo"></p>
+</div>
+
+<button id="quizButton">Quiz</button>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+
+<script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Enable shadows
+    camera.position.set(0, 400, 400);  // Increased the z position for better initial view
+    camera.lookAt(0, 0, 0);
+
+    // Resize canvas when window is resized
+    window.addEventListener('resize', () => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        renderer.setSize(width, height);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+    });
+
+    // document.getElementById('quizButton').addEventListener('click', () => {
+    //     window.location.href = '/quiz/'; // Redirect to your quiz page
+    // });
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 50, 50);
+    directionalLight.castShadow = true; // Enable shadow for the light
+    scene.add(directionalLight);
+
+    const loader = new THREE.GLTFLoader();
+    const objLoader = new THREE.OBJLoader(); // OBJ Loader for asteroids
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableZoom = true;
+    controls.enablePan = true;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    let modelControls; // Controls for rotating the model
+
+    const symbols = [];
+    const orbits = [];
+    const asteroids = []; // Array to store asteroid meshes
+
+    const planetColors = {
+        'Sun': 0xffd700,
+        'Mercury': 0x701d5d,
+        'Venus': 0x826d26,
+        'Earth': 0x1289c9,
+        'Mars': 0x912e0d,
+        'Jupiter': 0xa87165,
+        'Saturn': 0xc9ba7b,
+        'Uranus': 0x547278,
+        'Neptune': 0x303b54,
+    };
+
+    let isRotationStopped = false;  // Flag to stop rotation
+    let selectedModel = null;
+
+    function addSymbol(name, distance, radius, orbitSpeed, textSize) {
+        const color = planetColors[name];
+        const geometry = new THREE.SphereGeometry(radius, 32, 32);
+        const material = new THREE.MeshStandardMaterial({ color: color, side: THREE.DoubleSide });
+        const symbol = new THREE.Mesh(geometry, material);
+        symbol.position.set(distance, 0, 0);
+        symbol.castShadow = true; // Enable shadow for symbols
+        scene.add(symbol);
+
+        symbols.push({ name: name, symbol: symbol, distance: distance, orbitSpeed: orbitSpeed, angle: 0 });
+
+        // Create and add label with specified text size
+        const label = createLabel(name, textSize);
+        scene.add(label);
+        symbols[symbols.length - 1].label = label; // Store label reference
+
+        addOrbit(distance, color);
+    }
+
+    function createLabel(text, textSize) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        context.font = `${textSize}px Arial`; // Use specified text size
+        context.fillStyle = 'white';
+        context.fillText(text, 0, textSize); // Draw the text
+
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(100, 50, 1); // Set the scale of the label
+        return sprite;
+    }
+
+    function addOrbit(distance, color) {
+        const radius = distance;
+        const tubularSegments = 1;
+        const radiusTube = 1;
+        const radialSegments = 1000;
+
+        const orbitGeometry = new THREE.TorusGeometry(radius, radiusTube, tubularSegments, radialSegments, Math.PI * 2);
+        const orbitMaterial = new THREE.LineBasicMaterial({
+            color: color,
+            opacity: 0.5,
+            transparent: true
+        });
+
+        const orbit = new THREE.LineLoop(orbitGeometry, orbitMaterial);
+        orbit.rotation.x = Math.PI / 2;
+        orbits.push({ orbit: orbit, originalColor: color, planetName: symbols[symbols.length - 1].name });
+        scene.add(orbit);
+    }
+
+    let stars = [];
+    function addStars(count, region) {
+    const starGeometry = new THREE.SphereGeometry(0.4, 8, 8);
+    const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    let maxDistance;
+    
+    if (region === 'inner') {
+        maxDistance = 3200; // Jupiter's orbit
+    } else if (region === 'outer') {
+        maxDistance = 18000; // Neptune's orbit
+    }
+
+    for (let i = 0; i < count; i++) {
+        const star = new THREE.Mesh(starGeometry, starMaterial);
+        const x = Math.random() * maxDistance * 2 - maxDistance;
+        const y = Math.random() * maxDistance * 2 - maxDistance;
+        const z = Math.random() * maxDistance * 2 - maxDistance;
+
+        const distanceFromCenter = Math.sqrt(x * x + y * y + z * z);
+
+        if (region === 'inner' && distanceFromCenter <= 3200) {
+            // Add stars only within Jupiter's orbit
+            star.position.set(x, y, z);
+            scene.add(star);
+            stars.push(star); // Add the star to the stars array
+        } else if (region === 'outer' && distanceFromCenter > 3200 && distanceFromCenter <= 18000) {
+            // Add stars in the outer region, between Jupiter and Neptune
+            star.position.set(x, y, z);
+            scene.add(star);
+            stars.push(star); // Add the star to the stars array
+        }
+    }
+}
+
+// Add more stars until Jupiter's orbit
+addStars(10000, 'inner');
+
+// Add fewer stars from Jupiter to Neptune's orbit
+addStars(10000, 'outer');
+
+
+    // Call addSymbol with desired text sizes
+    addSymbol('Sun', 0, 35, 0, 54);
+    addSymbol('Mercury', 300, 8, 0.002, 20);
+    addSymbol('Venus', 500, 8, 0.0015, 20);
+    addSymbol('Earth', 800, 8, 0.001, 20);
+    addSymbol('Mars', 1250, 13, 0.0008, 20);
+    addSymbol('Jupiter', 3200, 45, 0.0006, 22);
+    addSymbol('Saturn', 7000, 80, 0.0004, 22);
+    addSymbol('Uranus', 12000, 105, 0.0002, 22);
+    addSymbol('Neptune', 18000, 150, 0.0001, 5000);
+
+            // Add asteroid symbols
+    addSymbol('Toutatis', 2500, 10, 0.001, 18);
+    addSymbol('Šteins', 2700, 10, 0.001, 18);
+    addSymbol('Castalia', 3000, 10, 0.001, 18);
+    addSymbol('Eros', 3500, 10, 0.001, 18);
+    addSymbol('Sylvia', 4000, 10, 0.001, 18);
+    addSymbol('Itokawa', 4500, 10, 0.001, 18);
+    addSymbol('Bennu', 5000, 10, 0.001, 18);
+
+        // Add comet symbols
+    addSymbol('Shoemaker-Levy 9', 5500, 10, 0.001, 18);
+    addSymbol('Comet Hyakutake', 6000, 10, 0.001, 18);
+    addSymbol('Halley\'s Comet', 6500, 10, 0.001, 18);
+    addSymbol('C/2020 F3', 7000, 10, 0.001, 18);
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', function(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(symbols.map(obj => obj.symbol));
+
+        const obj_symbol = intersects[0].object;
+            const obj_name = symbols.find(obj => obj.symbol === obj_symbol);
+            document.getElementById('quizButton').addEventListener('click', () => {
+                const quizUrl = `/quiz/${obj_name.name}/`;
+        window.location.href = quizUrl; // Redirect to your quiz page
+    });
+        if (intersects.length > 0) {
+            const clickedSymbol = intersects[0].object;
+            const clickedPlanet = symbols.find(obj => obj.symbol === clickedSymbol);
+
+            if (clickedPlanet) {
+                isRotationStopped = true;  // Stop rotation
+
+                // Disable OrbitControls to prevent further zoom or rotation
+                controls.enabled = false;
+
+                // Hide the symbol (planet sphere)
+                scene.remove(clickedPlanet.symbol);
+                scene.remove(clickedPlanet.label); // Remove the label when clicked
+
+                // Calculate camera zoom based on planet's size
+                const cameraOffsetDistance = clickedPlanet.distance + clickedSymbol.geometry.parameters.radius * 10; // Adjust 10 for the desired zoom level
+
+                // Move the camera closer to the planet, dynamically calculate Y-offset based on size
+                const newCameraPosition = new THREE.Vector3(
+                    clickedSymbol.position.x,
+                    clickedSymbol.position.y + clickedSymbol.geometry.parameters.radius * 2, // Adjust Y based on size
+                    clickedSymbol.position.z + cameraOffsetDistance
+                );
+                camera.position.copy(newCameraPosition);
+                camera.lookAt(clickedSymbol.position); // Make the camera focus on the clicked planet
+
+                // Load the corresponding 3D model
+                switch (clickedPlanet.name) {
+                    case 'Sun':
+                        loadModel('Sun', 'sun.glb', clickedSymbol, 3);
+                        updateInfoPanel('SUN', 'The Sun is the star at the center of the Solar System.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Mercury':
+                        loadModel('Mercury', 'mercury.glb', clickedSymbol, 0.70);
+                        updateInfoPanel('MERCURY', 'Mercury is the closest planet to the Sun and the smallest planet in the Solar System.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Venus':
+                        loadModel('Venus', 'venus.glb', clickedSymbol, 95);
+                        updateInfoPanel('VENUS', 'Venus is the second planet from the Sun and is similar in structure to Earth.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Earth':
+                        loadModel('Earth', 'prithvi.glb', clickedSymbol, 0.4);
+                        updateInfoPanel('EARTH', 'Earth is the third planet from the Sun and the only astronomical object known to harbor life.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Mars':
+                        loadModel('Mars', 'mars.glb', clickedSymbol, 215, 3);
+                        updateInfoPanel('MARS', 'Mars is the fourth planet from the Sun and is often called the "Red Planet."');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Jupiter':
+                        loadModel('Jupiter', 'jupiter.glb', clickedSymbol, 65);
+                        updateInfoPanel('JUPITER', 'Jupiter is the fifth planet from the Sun and the largest in the Solar System.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Saturn':
+                        loadModel('Saturn', 'saturn.glb', clickedSymbol, 3);
+                        updateInfoPanel('SATURN', 'Saturn is the sixth planet from the Sun and is known for its prominent ring system.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Uranus':
+                        loadModel('Uranus', 'uranus.glb', clickedSymbol, 10);
+                        updateInfoPanel('URANUS', 'Uranus is the seventh planet from the Sun and has a unique blue color due to methane in its atmosphere.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Neptune':
+                        loadModel('Neptune', 'neptune.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+
+
+                    case 'Toutatis':
+                        loadModel('Toutatis', 'toutatis.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Šteins':
+                        loadModel('Šteins', 'stenis.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Castalia':
+                        loadModel('Castalia', 'castalia.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Eros':
+                        loadModel('Eros', 'Eros.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Sylvia':
+                        loadModel('Sylvia', 'sylvia.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Itokawa':
+                        loadModel('Itokawa', 'Itokawa.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    case 'Bennu':
+                        loadModel('Bennu', 'Bennu.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+
+
+                    case 'Shoemaker-Levy 9':
+                        loadModel('Shoemaker-Levy 9', 'neptune.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+
+                    case 'Comet Hyakutake':
+                        loadModel('Comet Hyakutake', 'neptune.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+
+                    case 'Halley\'s Comet':
+                        loadModel('Halley\'s Comet', 'neptune.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+
+                    case 'C/2020 F3':
+                        loadModel('C/2020 F3', 'neptune.glb', clickedSymbol, 20);
+                        updateInfoPanel('NEPTUNE', 'Neptune is the eighth and farthest planet from the Sun, known for its deep blue color.');
+                        updateDistanceInfo(0, clickedPlanet.distance, calculateOrbitalPeriod(clickedPlanet.name));
+                        break;
+                    
+                    default:
+                        console.error('No model found for planet: ', clickedPlanet.name);
+                        break;
+                }
+
+                // Show the back button
+                document.getElementById('backButton').style.display = 'block';
+                document.getElementById('quizButton').style.display = 'block';
+
+                // Reset other planets' visibility and rotation
+                symbols.forEach(obj => {
+                    if (obj.symbol !== clickedPlanet.symbol) {
+                        obj.symbol.visible = true; // Make other symbols visible again
+                    }
+                });
+
+                // Enable model controls for rotating the model manually
+                modelControls = new THREE.OrbitControls(camera, renderer.domElement);
+                modelControls.enableZoom = false;
+                modelControls.enablePan = false;
+                modelControls.target.copy(clickedSymbol.position);
+                modelControls.update();
+            }
+        }
+    });
+
+    // Function to update the info panel
+    function updateInfoPanel(name, info) {
+        document.getElementById('modelName').innerText = name;
+        document.getElementById('modelInfo').innerText = info;
+        document.getElementById('infoPanel').style.display = 'block'; // Show the info panel
+    }
+
+    function updateDistanceInfo(distanceFromEarth, distanceFromSun, orbitalPeriod) {
+    const distanceInfoDiv = document.getElementById('distanceInfo');
+    
+    // Update text
+    document.getElementById('distanceFromEarth').innerText = `Distance from Earth: ${distanceFromEarth} km`;
+    document.getElementById('distanceFromSun').innerText = `Distance from Sun: ${distanceFromSun} km`;
+    document.getElementById('orbitalPeriod').innerText = `Time for one solar orbit: ${orbitalPeriod} days`;
+
+    // Show distance info
+    distanceInfoDiv.style.display = 'block';
+}
+
+document.getElementById('backButton').addEventListener('click', () => {
+    if (selectedModel) {
+        scene.remove(selectedModel); // Remove the currently displayed model
+        selectedModel = null;
+    }
+
+    // Reset camera position
+    camera.position.set(0, 400, 400);
+    camera.lookAt(0, 0, 0);
+    isRotationStopped = false;  // Allow rotation again
+
+    // Re-enable OrbitControls for the main scene
+    controls.enabled = true;
+
+    // Hide the back button
+    document.getElementById('backButton').style.display = 'none';
+    document.getElementById('quizButton').style.display = 'none';
+
+    // Hide the info panel
+    document.getElementById('infoPanel').style.display = 'none';
+
+    // Hide distance info - Add this line
+    document.getElementById('distanceInfo').style.display = 'none';
+
+    // Show all symbols again
+    symbols.forEach(obj => {
+        scene.add(obj.symbol);
+        scene.add(obj.label); // Add the label back
+    });
+
+    // Dispose of model controls
+    if (modelControls) {
+        modelControls.dispose();
+        modelControls = null;
+    }
+});
+
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (!isRotationStopped) {
+            symbols.forEach(obj => {
+                obj.angle += obj.orbitSpeed; // Increment the angle based on orbit speed
+                obj.symbol.position.x = obj.distance * Math.cos(obj.angle);
+                obj.symbol.position.z = obj.distance * Math.sin(obj.angle);
+                obj.label.position.set(obj.symbol.position.x, obj.symbol.position.y + 10, obj.symbol.position.z); // Adjust label position
+            });
+        }
+
+        const cameraDistance = camera.position.length(); // Distance from (0, 0, 0)
+    const starScale = Math.max(0.1, Math.min(2, cameraDistance / 1000)); // Scale between 0.1 and 2 based on distance
+
+    // Update star sizes
+    stars.forEach(star => {
+        star.scale.set(starScale, starScale, starScale); // Uniform scaling
+    });
+
+    
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Load model function
+    function loadModel(name, url, symbol, scale) {
+        loader.load(url, function (gltf) {
+            if (selectedModel) {
+                scene.remove(selectedModel); // Remove previous model
+            }
+            selectedModel = gltf.scene;
+            selectedModel.scale.set(scale, scale, scale);
+            selectedModel.position.copy(symbol.position);
+            scene.add(selectedModel);
+        }, undefined, function (error) {
+            console.error('An error happened while loading the model: ', error);
+        });
+    }
+    
+    
+function calculateOrbitalPeriod(planetName) {
+    const orbitalPeriods = {
+        'Mercury': 88,
+        'Venus': 225,
+        'Earth': 365,
+        'Mars': 687,
+        'Jupiter': 4333,
+        'Saturn': 10759,
+        'Uranus': 30687,
+        'Neptune': 60190,
+        'Toutatis': 4.3,
+            'Šteins': 2.3,
+            'Castalia': 1.6,
+            'Eros': 1.75,
+            'Sylvia': 3.5,
+            'Itokawa': 1.9,
+            'Bennu': 1.2,
+            'Shoemaker-Levy 9': 2.4,
+            'Comet Hyakutake': 3.5,
+            'Halley\'s Comet': 76,
+            'C/2020 F3': 6.6
+    };
+    return orbitalPeriods[planetName] || 0; // Default to 0 if planet not found
+}
+
+
+
+</script>
+
+</body>
+</html>
